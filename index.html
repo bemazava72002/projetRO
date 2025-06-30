@@ -1,0 +1,200 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Algorithme de Demoucron - Minimisation</title>
+    <link href="bootstrap.min.css" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/vis-network@9.1.2/standalone/umd/vis-network.min.js"></script>
+     <script src="d3.v5.min.js"></script>
+</head>
+<body class="container mt-4">
+
+    <h2 class="text-center">Algorithme de Demoucron - Minimisation</h2>
+
+    <!-- Ajout de sommets -->
+    <div class="mb-3">
+        <label class="form-label">Ajouter un sommet :</label>
+        <input type="text" id="sommetInput" class="form-control" placeholder="Nom du sommet">
+        <button class="btn btn-primary mt-2" onclick="ajouterSommet()">Ajouter</button>
+    </div>
+
+    <h4>Sommets :</h4>
+    <ul id="sommetsList" class="list-group mb-3"></ul>
+
+    <!-- Ajout d'arcs -->
+    <h4>Ajouter un arc :</h4>
+    <div class="row">
+        <div class="col">
+            <select id="arcDepart" class="form-select"></select>
+        </div>
+        <div class="col">
+            <select id="arcArrivee" class="form-select"></select>
+        </div>
+        <div class="col">
+            <input type="number" id="arcValeur" class="form-control" placeholder="Poids">
+        </div>
+        <div class="col">
+            <button class="btn btn-success" onclick="ajouterArc()">Ajouter Arc</button>
+        </div>
+    </div>
+
+    <h4>Arcs :</h4>
+    <ul id="arcList" class="list-group mb-3"></ul>
+
+    <!-- Bouton d'exécution -->
+    <button class="btn btn-danger mt-3" onclick="demoucron()">Lancer l'algorithme</button>
+
+    <!-- Matrices -->
+    <h4 class="mt-4">Tableaux des Matrices :</h4>
+    <div id="matrices"></div>
+
+    <!-- Graphes -->
+    <h4>Graphe Initial :</h4>
+    <div id="graphInitial" style="height: 400px; border: 1px solid #ddd;"></div>
+
+    <h4 class="mt-4">Graphe du Chemin Optimal :</h4>
+    <div id="graphFinal" style="height: 400px; border: 1px solid #ddd;"></div>
+
+    <script>
+      // Implémentation complète de l'algorithme de Demoucron - Minimisation
+
+let sommets = [];
+let arcs = [];
+let matrice = [];
+
+function ajouterSommet() {
+    let nom = document.getElementById("sommetInput").value.trim();
+    if (nom && !sommets.includes(nom)) {
+        sommets.push(nom);
+        document.getElementById("sommetInput").value = "";
+        mettreAJourSommets();
+    }
+}
+
+function mettreAJourSommets() {
+    let selectDepart = document.getElementById("arcDepart");
+    let selectArrivee = document.getElementById("arcArrivee");
+    selectDepart.innerHTML = "";
+    selectArrivee.innerHTML = "";
+    sommets.forEach(s => {
+        selectDepart.innerHTML += `<option value="${s}">${s}</option>`;
+        selectArrivee.innerHTML += `<option value="${s}">${s}</option>`;
+    });
+}
+
+function ajouterArc() {
+    let depart = document.getElementById("arcDepart").value;
+    let arrivee = document.getElementById("arcArrivee").value;
+    let poids = parseInt(document.getElementById("arcValeur").value, 10);
+    if (depart && arrivee && !isNaN(poids)) {
+        arcs.push({ depart, arrivee, poids });
+        document.getElementById("arcValeur").value = "";
+        afficherArcs();
+    }
+}
+
+function afficherArcs() {
+    let list = document.getElementById("arcList");
+    list.innerHTML = "";
+    arcs.forEach(arc => {
+        list.innerHTML += `<li class="list-group-item">${arc.depart} → ${arc.arrivee} : ${arc.poids}</li>`;
+    });
+}
+
+function initialiserMatrice() {
+    const n = sommets.length;
+    matrice = Array.from({ length: n }, () => Array(n).fill(Infinity));
+
+    arcs.forEach(arc => {
+        const i = sommets.indexOf(arc.depart);
+        const j = sommets.indexOf(arc.arrivee);
+        matrice[i][j] = arc.poids;
+    });
+
+    for (let i = 0; i < n; i++) matrice[i][i] = 0;
+}
+function getPath(next, i, j) {
+    let path = [i];
+    while (i !== j) {
+        i = next[i][j];
+        if (i === null) return [];
+        path.push(i);
+    }
+    return path;
+}
+
+function demoucron() {
+    initialiserMatrice();
+    const n = sommets.length;
+    let D = JSON.parse(JSON.stringify(matrice));
+    let next = Array.from({ length: n }, () => Array(n).fill(null));
+
+    for (let i = 0; i < n; i++) {
+        for (let j = 0; j < n; j++) {
+            if (D[i][j] !== Infinity) next[i][j] = j;
+        }
+    }
+
+    let iterations = [`<h4>Matrice D1</h4>${matrixToTable(D, n)}`];
+
+    for (let k = 0; k < n; k++) {
+        let Dk = Array.from({ length: n }, () => Array(n).fill(Infinity));
+        for (let i = 0; i < n; i++) {
+            for (let j = 0; j < n; j++) {
+                let direct = D[i][j];
+                let viaK = (D[i][k] !== Infinity && D[k][j] !== Infinity) ? D[i][k] + D[k][j] : Infinity;
+                Dk[i][j] = Math.min(direct, viaK);
+                if (Dk[i][j] === viaK) next[i][j] = next[i][k];
+            }
+        }
+        D = Dk;
+        iterations.push(`<h4>Matrice D${k + 2}</h4>${matrixToTable(Dk, n)}`);
+    }
+
+    let paths = [];
+    for (let i = 0; i < n; i++) {
+        for (let j = 0; j < n; j++) {
+            if (i !== j && next[i][j] !== null) {
+                let path = getPath(next, i, j);
+                paths.push({ start: i, end: j, path });
+            }
+        }
+    }
+
+    iterations.push(`<h4>Matrice Finale avec Chemin Optimal</h4>${matrixToTableWithPaths(D, n, paths)}`);
+    document.getElementById("matrices").innerHTML = iterations.join("<br>");
+    afficherGraphes(D, paths);
+}
+
+function matrixToTable(matrix, size) {
+    let html = "<table class='table table-bordered'><thead><tr><th></th>";
+    for (let i = 0; i < size; i++) html += `<th>x${i+1}</th>`;
+    html += "</tr></thead><tbody>";
+    for (let i = 0; i < size; i++) {
+        html += `<tr><th>x${i+1}</th>`;
+        for (let j = 0; j < size; j++) {
+            html += `<td>${matrix[i][j] === Infinity ? "∞" : matrix[i][j]}</td>`;
+        }
+        html += "</tr>";
+    }
+    return html + "</tbody></table>";
+}
+
+// function afficherGraphes(D, paths) {
+//     let nodes = new vis.DataSet(sommets.map((s, index) => ({ id: index + 1, label: s })));
+//     let edges = new vis.DataSet(arcs.map(a => ({
+//         from: sommets.indexOf(a.depart) + 1,
+//         to: sommets.indexOf(a.arrivee) + 1,
+//         label: a.poids.toString(),
+//         color: paths.some(p => p.start === sommets.indexOf(a.depart) && p.end === sommets.indexOf(a.arrivee)) ? "red" : "black"
+//     })));
+
+//     new vis.Network(document.getElementById("graphInitial"), { nodes, edges }, { edges: { arrows: "to" } });
+//     new vis.Network(document.getElementById("graphFinal"), { nodes, edges }, { edges: { arrows: "to" } });
+// }
+
+    </script>
+
+</body>
+</html>

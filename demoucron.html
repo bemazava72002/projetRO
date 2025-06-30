@@ -1,0 +1,158 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Algorithme de Demoucron - Étape par Étape</title>
+    <link href="bootstrap.min.css" rel="stylesheet">
+    <script src="d3.v5.min.js"></script>
+    <style>
+        body { background-color: #f4f4f4; }
+        .optimal { color: red; font-weight: bold; }
+        .matrix-table { background-color: white; margin-bottom: 20px; }
+        svg { border: 1px solid #ccc; margin-top: 20px; }
+    </style>
+</head>
+<body class="container mt-5">
+
+    <h2 class="text-center mb-4">Algorithme de Demoucron - Étape par Étape</h2>
+
+    <!-- Formulaire pour entrer le graphe -->
+    <form id="graphForm">
+        <div class="mb-3">
+            <label for="nodes" class="form-label">Nombre de sommets :</label>
+            <input type="number" id="nodes" class="form-control" required min="2">
+        </div>
+        <div class="mb-3">
+            <label for="edges" class="form-label">Liste des arêtes (ex: 1,2,3 signifie x1 → x2 coût 3) :</label>
+            <textarea id="edges" class="form-control" rows="4" required></textarea>
+        </div>
+        <button type="submit" class="btn btn-primary">Démarrer</button>
+    </form>
+
+    <h3 class="mt-5">Graph Initial</h3>
+    <svg width="600" height="400"></svg>
+
+    <h3 class="mt-5">Étapes de calcul</h3>
+    <div id="result" class="mt-3"></div>
+
+    <h3 class="mt-5">Graphe du Chemin Optimal</h3>
+    <svg id="finalGraph" width="600" height="400"></svg>
+
+    <script>
+        document.getElementById("graphForm").addEventListener("submit", function(event) {
+            event.preventDefault();
+
+            let n = parseInt(document.getElementById("nodes").value);
+            let edgesInput = document.getElementById("edges").value.trim();
+
+            let inf = Infinity;
+            let D = Array.from({ length: n }, () => Array(n).fill(inf));
+            let next = Array.from({ length: n }, () => Array(n).fill(null));
+
+            for (let i = 0; i < n; i++) D[i][i] = 0;
+
+            let edges = edgesInput.split("\n");
+            let graphEdges = [];
+            for (let edge of edges) {
+                let [x, y, w] = edge.split(",").map(Number);
+                D[x - 1][y - 1] = w;
+                next[x - 1][y - 1] = y - 1;
+                graphEdges.push({ source: x - 1, target: y - 1, weight: w });
+            }
+
+            drawGraph(n, graphEdges);
+
+            let resultHTML = `<h4>Matrice D1</h4>${matrixToTable(D, n)}`;
+
+            for (let k = 0; k < n; k++) {
+                let Dk = Array.from({ length: n }, () => Array(n).fill(inf));
+                for (let i = 0; i < n; i++) {
+                    for (let j = 0; j < n; j++) {
+                        let direct = D[i][j];
+                        let viaK = (D[i][k] !== inf && D[k][j] !== inf) ? D[i][k] + D[k][j] : inf;
+                        Dk[i][j] = Math.min(direct, viaK);
+                        if (Dk[i][j] === viaK) next[i][j] = next[i][k];
+                    }
+                }
+                D = Dk;
+                resultHTML += `<h4>Matrice D${k + 2}</h4>${matrixToTable(Dk, n)}`;
+            }
+
+            let paths = [];
+            for (let i = 0; i < n; i++) {
+                for (let j = 0; j < n; j++) {
+                    if (i !== j && next[i][j] !== null) {
+                        let path = getPath(next, i, j);
+                        paths.push({ start: i, end: j, path });
+                    }
+                }
+            }
+
+            resultHTML += `<h4>Matrice Finale avec Chemin Optimal</h4>${matrixToTableWithPaths(D, n, paths)}`;
+            document.getElementById("result").innerHTML = resultHTML;
+            drawGraph(n, graphEdges, paths, "finalGraph");
+        });
+
+        function matrixToTable(matrix, size) {
+            let html = "<table class='table table-bordered matrix-table'><thead><tr><th></th>";
+            for (let i = 0; i < size; i++) html += `<th>x${i+1}</th>`;
+            html += "</tr></thead><tbody>";
+
+            for (let i = 0; i < size; i++) {
+                html += `<tr><th>x${i+1}</th>`;
+                for (let j = 0; j < size; j++) {
+                    html += `<td>${matrix[i][j] === Infinity ? "∞" : matrix[i][j]}</td>`;
+                }
+                html += "</tr>";
+            }
+
+            html += "</tbody></table>";
+            return html;
+        }
+
+        function matrixToTableWithPaths(matrix, size, paths) {
+            let html = "<table class='table table-bordered matrix-table'><thead><tr><th></th>";
+            for (let i = 0; i < size; i++) html += `<th>x${i+1}</th>`;
+            html += "</tr></thead><tbody>";
+
+            for (let i = 0; i < size; i++) {
+                html += `<tr><th>x${i+1}</th>`;
+                for (let j = 0; j < size; j++) {
+                    let isPath = paths.some(p => p.start === i && p.end === j);
+                    let className = isPath ? "optimal" : "";
+                    html += `<td class="${className}">${matrix[i][j] === Infinity ? "∞" : matrix[i][j]}</td>`;
+                }
+                html += "</tr>";
+            }
+
+            html += "</tbody></table>";
+            return html;
+        }
+
+        function drawGraph(n, edges, paths = [], svgId = "svg") {
+            const svg = d3.select(`#${svgId}`);
+            svg.selectAll("*").remove();
+
+            let nodes = Array.from({ length: n }, (_, i) => ({ id: i, name: "x" + (i + 1) }));
+
+            svg.selectAll("line")
+                .data(edges)
+                .enter()
+                .append("line")
+                .style("stroke", d => paths.some(p => p.start === d.source && p.end === d.target) ? "red" : "black")
+                .style("stroke-width", 2);
+        }
+
+        function getPath(next, i, j) {
+            let path = [i];
+            while (i !== j) {
+                i = next[i][j];
+                path.push(i);
+            }
+            return path;
+        }
+    </script>
+
+</body>
+</html>
