@@ -1,0 +1,109 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Algorithme de Demoucron - Plus courts/longs chemins</title>
+  <link href="css/bootstrap.min.css" rel="stylesheet" />
+  <script src="js/vis-network.min.js"></script>
+  <script src="js/demoucron.js"></script>
+  <style>
+    .matrix-table { font-size: 0.9em; margin: 10px 0; }
+    .step-container { margin: 20px 0; padding: 15px; border: 1px solid #ddd; border-radius: 5px; }
+    .path-info { background-color: #f8f9fa; padding: 10px; border-radius: 5px; margin: 10px 0; }
+    .infinity { color: #666; font-style: italic; }
+    .changed-cell { background-color: #fff3cd !important; }
+  </style>
+</head>
+<body class="container mt-4">
+  <h2 class="text-center mb-4">Algorithme de Demoucron</h2>
+
+  <div class="row">
+    <div class="col-md-6">
+      <h4>Configuration :</h4>
+      <div class="mb-3">
+        <label class="text text-primary">Mode :</label>
+        <select id="modeSelect" class="form-control">
+          <option value="min">Minimisation (Plus courts chemins)</option>
+          <option value="max">Maximisation (Plus longs chemins)</option>
+        </select>
+      </div>
+      <div class="mb-3">
+        <label class="form-label">Ajouter un sommet :</label>
+        <div class="input-group">
+          <input type="text" id="sommetInput" class="form-control" placeholder="Nom du sommet" onkeypress="if(event.key==='Enter') ajouterSommet()">
+          <button class="btn btn-primary" onclick="ajouterSommet()">Ajouter</button>
+        </div>
+      </div>
+
+      <div class="mb-3">
+        <h5>Sommets :</h5>
+        <div id="sommetsList" class="d-flex flex-wrap gap-2"></div>
+      </div>
+
+      <div class="mb-3">
+        <h5>Ajouter un arc :</h5>
+        <div class="row g-2">
+          <div class="col">
+            <select id="arcDepart" class="form-control"><option value="">Départ</option></select>
+          </div>
+          <div class="col">
+            <select id="arcArrivee" class="form-control"><option value="">Arrivée</option></select>
+          </div>
+          <div class="col">
+            <input type="number" id="arcValeur" class="form-control" placeholder="Poids" onkeypress="if(event.key==='Enter') ajouterArc()">
+          </div>
+          <div class="col-auto">
+            <button class="btn btn-success" onclick="ajouterArc()">Ajouter</button>
+          </div>
+        </div>
+      </div>
+
+      <div class="mb-3">
+        <h5>Arcs :</h5>
+        <div id="arcList" class="border rounded p-2" style="max-height: 200px; overflow-y: auto;"></div>
+      </div>
+
+      <div class="d-grid gap-2">
+        <button class="btn btn-danger btn-lg" onclick="executerDemoucron()">🚀 Lancer l'algorithme</button>
+        <button class="btn btn-warning" onclick="reinitialiser()">🔄 Réinitialiser</button>
+      </div>
+    </div>
+
+    <div class="col-md-6">
+      <h4>Graphe :</h4>
+      <div id="graphContainer" style="height: 400px; border: 1px solid #ddd; border-radius: 5px;"></div>
+
+      <div class="mt-3">
+        <h5>Recherche de chemin :</h5>
+        <div class="row g-2">
+          <div class="col">
+            <select id="cheminDepart" class="form-control"><option value="">Sommet départ</option></select>
+          </div>
+          <div class="col">
+            <select id="cheminArrivee" class="form-control"><option value="">Sommet arrivée</option></select>
+          </div>
+          <div class="col-auto">
+            <button class="btn btn-info" onclick="afficherChemin()">Voir chemin</button>
+          </div>
+        </div>
+        <div id="cheminInfo" class="path-info mt-2" style="display: none;"></div>
+      </div>
+    </div>
+  </div>
+
+  <div id="resultats" style="display: none;">
+    <hr class="my-4">
+    <h3>Résultats de l'algorithme</h3>
+    <div id="matrices" class="mb-4"></div>
+    <div class="row">
+      <div class="col-md-6">
+        <h4>Matrice des distances finales :</h4>
+        <div id="matriceFinale"></div>
+      </div>
+    </div>
+  </div>
+
+  
+</body>
+</html>
